@@ -256,6 +256,38 @@ export default function ImportaTitulos() {
 
 
 
+  const handleGerarTXT = () => {
+    // Verifica se há dados a serem exportados
+    if (resultado.length === 0) {
+      alert("Nenhum dado disponível para exportação.");
+      return;
+    }
+
+    // Formata os dados para o formato TXT
+    const textoFormatado = resultado.map((item) => {
+      // Formate cada linha conforme necessário
+      return `${item.NUMERO_TITULO}\t${item.DESDOBRO}\t${item.NOME_LOJA}\t${item.VALOR_TITULO}\n`;
+    }).join('');
+
+    // Cria um Blob com o texto formatado
+    const blob = new Blob([textoFormatado], { type: 'text/plain' });
+
+    // Cria um URL temporário para o Blob
+    const url = URL.createObjectURL(blob);
+
+    // Cria um link para fazer o download do arquivo TXT
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'dados.txt';
+
+    // Simula o clique no link para iniciar o download
+    document.body.appendChild(link);
+    link.click();
+
+    // Remove o link e revoga o URL temporário
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
 
 
@@ -379,7 +411,7 @@ export default function ImportaTitulos() {
 
           </Flex>
           <Flex>
-          <Input
+            <Input
               height="28px"
               m="7px"
               placeholder="Cod CLiente"
@@ -395,11 +427,11 @@ export default function ImportaTitulos() {
                 }
               }}
             />
-           
+
             <Input
               height="28px"
               m="7px"
-              value={FI15NOME} 
+              value={FI15NOME}
               width="330px"
               background="white"
               color="black"
@@ -670,9 +702,17 @@ export default function ImportaTitulos() {
           >Prefixos</Button>
         </Flex>
         <Flex width="50%" justifyContent="flex-end">
-          <Button m="7px" width="200px" colorScheme='blue' bg="#465687" color="white" type="submit"
-          // onClick={handleExportExcel}
-          >Gerar TXT</Button>
+          <Button
+            m="7px"
+            width="200px"
+            colorScheme='blue'
+            bg="#465687"
+            color="white"
+            onClick={handleGerarTXT} // Adiciona o evento onClick para chamar a função handleGerarTXT
+          >
+            Gerar TXT
+          </Button>
+
           <Button m="7px" width="200px" colorScheme='blue' bg="#FF4133" color="white" type="submit"
           // onClick={handleExportExcel}
           >Limpar</Button>

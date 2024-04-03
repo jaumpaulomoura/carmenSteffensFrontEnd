@@ -1,12 +1,21 @@
 import React, { useState, useEffect } from "react";
+import { Loading } from '../components/Loading'
 import axios from "axios";
 import {
+  Flex,
   Box,
   Button,
   Input,
-  Image,Text,
+  Image,
+  Text,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  Checkbox // Componente Checkbox corrigido
 } from "@chakra-ui/react";
-import { DataGrid } from "@mui/x-data-grid";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import * as XLSX from "xlsx";
@@ -15,6 +24,7 @@ import { IoAddCircleOutline } from "react-icons/io5";
 
 export default function TrocaFabrica() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loading, setLoading] = useState(false)
   const [login, setLogin] = useState("");
   const [senha, setSenha] = useState("");
   const [secao, setSecao] = useState("");
@@ -23,14 +33,17 @@ export default function TrocaFabrica() {
   const [dataWithIds, setDataWithIds] = useState([]);
   const [newFabrica, setNewFabrica] = useState("");
   const [selectionModel, setSelectionModel] = useState([]);
-
   const [apiData, setApiData] = useState([]);
+  const [selectAll, setSelectAll] = useState(false);
   const [apiDataAtuFab, setApiDataAtuFab] = useState([]);
-  const [selectedRowIds, setSelectedRowIds] = useState([]);
 
 
   const handleLogin = async () => {
-    const api_url = "http://127.0.0.1:5000/api/login";
+    // dev
+    // const api_url = "http://127.0.0.1:5000/api/login";
+    // prod
+    const api_url = "http://192.168.12.58:5000/api/login";
+
     const credentials = {
       login: login,
       senha: senha,
@@ -48,6 +61,7 @@ export default function TrocaFabrica() {
     } catch (error) {
       toast.error("Erro ao fazer login: Credenciais inválidas");
     }
+    
   };
 
   const handleFileUpload = async (selectedFile) => {
@@ -57,6 +71,7 @@ export default function TrocaFabrica() {
     }
 
     try {
+      setLoading(true);
       const reader = new FileReader();
       reader.onload = (e) => {
         const data = e.target.result;
@@ -66,7 +81,7 @@ export default function TrocaFabrica() {
         const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
         setDataFromExcel(jsonData);
-        toast.success("Importação concluída com sucesso.");
+        
 
         const dataWithIds = jsonData.map((rowData, index) => ({
           empresa: rowData[0],
@@ -84,60 +99,130 @@ export default function TrocaFabrica() {
     } catch (error) {
       console.error("Erro durante a importação do arquivo:", error);
       toast.error("Erro durante a importação do arquivo.");
-    }
+    } 
   };
 
-  useEffect(() => {
-    if (isLoggedIn ) {
-      fetchDataFromAPI(dataWithIds);
-    }
-  }, [isLoggedIn, dataWithIds]);
+  // useEffect(() => {
+  //   if (isLoggedIn) {
+  //     fetchDataFromAPI(dataWithIds);
+  //   }
+  // }, [isLoggedIn, dataWithIds]);
 
   const fetchDataFromAPI = async (dataToFetch) => {
     try {
-      const apiUrl = "http://127.0.0.1:5000/api/pesFichaFab";
+      setLoading(true);
+      // dev
+      // const apiUrl = "http://127.0.0.1:5000/api/pesFichaFab";
+      // prod
+      const apiUrl = "http://192.168.12.58:5000/api/pesFichaFab";
       const response = await axios.post(apiUrl, dataToFetch);
-
+  
       if (response.status === 200) {
         setApiData(response.data);
       }
     } catch (error) {
       console.error("Erro ao buscar dados da API2:", error);
+    } finally {
+      setLoading(false); 
+      toast.success("Importação concluída com sucesso.");
     }
+  };
+  
+
+
+  const handleCheckboxChange = (id) => {
+    setSelectionModel(prevSelectionModel => {
+      const isSelected = prevSelectionModel.includes(id);
+      if (isSelected) {
+        return prevSelectionModel.filter(item => item !== id);
+      } else {
+        return [...prevSelectionModel, id];
+      }
+    });
+  };
+
+  useEffect(() => {
+    console.log("Valores selecionados:", selectionModel);
+  }, [selectionModel]);
+
+
+  const handleSelectAll = () => {
+    if (selectAll) {
+      setSelectionModel([]);
+    } else {
+      const allIds = apiData.map(row => row.ID);
+      setSelectionModel(allIds);
+    }
+    setSelectAll(prevSelectAll => !prevSelectAll);
   };
 
 
   const handleNewFabrica = (e) => {
     setNewFabrica(e.target.value);
   };
+
+  const buildArray = (selectedData, newFabrica, login) => {
+    return {
+      currentPageData: selectedData.map(row => ({
+        EMPRESA: row.EMPRESA,
+        ANO: row.ANO,
+        FICHA: row.FICHA,
+        SECAO: row.SECAO,
+        FABRICA: row.FABRICA
+      })),
+      newFabrica: newFabrica,
+      login: login
+    };
+  };
+
+
+
+
+
+
   const handleAtuFab = async () => {
     try {
-      const apiUrlFab = "http://127.0.0.1:5000/api/pesFichaFab/atualizaFab";
-      const dataToSend = {
-        selectedRowIds: selectionModel,
-        newFabrica: newFabrica,
-        login: login,
-      };
-
-      console.log('IDs selecionados:', selectionModel); // Adicione esta linha para verificar os IDs
-
-      // Adiciona os IDs ao array selectedRowIds
-      setSelectedRowIds(prevSelectedIds => [...prevSelectedIds, ...selectionModel]);
+      setLoading(true);
+      // dev
+      // const apiUrlFab = "http://127.0.0.1:5000/api/pesFichaFab/atualizaFab";
+      // prod
+      const apiUrlFab = "http://192.168.12.58:5000/api/pesFichaFab/atualizaFab";
+      const dataToSend = buildArray(apiData.filter(row => selectionModel.includes(row.ID)), newFabrica, login);
 
       const responseFab = await axios.post(apiUrlFab, dataToSend);
       if (responseFab.status === 200) {
         toast.success("Dados enviados com sucesso.");
         setApiDataAtuFab(responseFab.dataAtuFab);
       }
-
-      console.log('Resposta da API:', responseFab);
     } catch (error) {
       console.error("Erro na solicitação para a API:", error);
       toast.error("Erro ao enviar dados para a API.");
+    }finally {
+      setLoading(false); 
+      toast.success("Troca das fabricas concluída com sucesso.");
     }
   };
+
+  
+  const clearAllStates = () => {
+    setSenha("");
+    setSecao("");
+    setFabrica("");
+    setDataFromExcel([]);
+    setDataWithIds([]);
+    setNewFabrica("");
+    setSelectionModel([]);
+    setApiData([]);
+    setSelectAll(false);
+    setApiDataAtuFab([]);
+  };
+
   return (
-    
+    <Flex direction="column" height="100vh">
+      
+        
+           
+      
       <Box bg="#fff">
         <ToastContainer
           position="bottom-center"
@@ -149,19 +234,18 @@ export default function TrocaFabrica() {
           pauseOnFocusLoss
           draggable
           pauseOnHover
-        />
-
+          />
         {!isLoggedIn ? (
-          <Box
-            width="100%"
-            height="100vh"
-            direction="column"
-            align="center"
-            justify="center"
-            bg="gray.300"
-            as="form"
+          <Flex
+          width="100%"
+          height="100vh"
+          direction="column"
+          align="center"
+          justify="center"
+          bg="gray.300"
+          as="form"
           >
-            <Box
+            <Flex
               direction="column"
               justify="center"
               align="center"
@@ -171,7 +255,7 @@ export default function TrocaFabrica() {
               padding="15px"
               width="400px"
               boxShadow="0 0 40px rgba(0,0,0,.05)"
-            >
+              >
               <Image src="/csLogo.png" maxWidth="250px" />
               <Text as="h1" fontSize="18px" fontWeight="400" textAlign="center">
                 Acesso ao sistema
@@ -185,7 +269,7 @@ export default function TrocaFabrica() {
                 type="text"
                 value={login}
                 onChange={(e) => setLogin(e.target.value.toUpperCase())}
-              />
+                />
               <Input
                 m="10px"
                 placeholder="Senha"
@@ -200,7 +284,7 @@ export default function TrocaFabrica() {
                     handleLogin();
                   }
                 }}
-              />
+                />
               <Button
                 m="10px"
                 marginBottom="10px"
@@ -210,7 +294,7 @@ export default function TrocaFabrica() {
                 color="white"
                 type="button"
                 onClick={handleLogin}
-              >
+                >
                 Login
               </Button>
               <Text
@@ -218,15 +302,15 @@ export default function TrocaFabrica() {
                 fontWeight="400"
                 textAlign="center"
                 marginTop="20px"
-              >
+                >
                 Versão: 0.0.1
               </Text>
-            </Box>
-          </Box>
-        ) : 
-        (
-          <Box direction="column" height="100vh">
-            <Box
+            </Flex>
+          </Flex>
+        ) : (
+          <Flex direction="column" height="100vh">
+            {loading && <Loading />}
+            <Flex
               direction="row"
               ml="2px"
               m="5px"
@@ -236,21 +320,23 @@ export default function TrocaFabrica() {
               width="99.4%"
               height="17%"
               border="1px solid"
-            >
-              <Box direction="column" width="69%" height="100%">
-                <Box direction="row" height="18%">
-                  {/* <Text color="#fff" ml="3px">
+              >
+              <Flex direction="column" width="100%" height="100%">
+                <Flex direction="row" height="20%">
+                  <Text color="#fff" ml="3px">
                     Pesquisar
-                  </Text> */}
-                  <FaSearch style={{ marginLeft: "5px", marginTop: "5px", color: "#fff" }} />
-                </Box>
-                <Box direction="row">
+                  </Text>
+                  <FaSearch
+                    style={{ marginLeft: "5px", marginTop: "5px", color: "#fff" }}
+                  />
+                </Flex>
+                <Flex direction="row">
                   <Input
                     ml="10px"
                     mt="5px"
                     marginBottom="10px"
                     width="100px"
-                    height="100%"
+                    height="30px"
                     background="#fff"
                     type="text"
                     value={fabrica}
@@ -262,49 +348,49 @@ export default function TrocaFabrica() {
                     mt="5px"
                     marginBottom="10px"
                     width="100px"
-                    height="100%"
+                    height="30px"
                     background="#fff"
                     type="text"
                     value={secao}
                     onChange={(e) => setSecao(e.target.value)}
                     placeholder="Seção"
                   />
-                </Box>
-                <Box>
+                </Flex>
+                <Flex>
                   <Input
                     ml="10px"
-                    mt="10px"
+                    mt="5px"
                     marginBottom="10px"
                     width="100px"
-                    height="100%"
+                    height="30px"
                     background="#fff"
                     type="text"
                     placeholder="Ano"
                   />
                   <Input
                     ml="10px"
-                    mt="10px"
+                    mt="5px"
                     marginBottom="10px"
                     width="130px"
-                    height="100%"
+                    height="30px"
                     background="#fff"
                     type="text"
                     placeholder="Ficha"
                   />
                   <Input
                     ml="10px"
-                    mt="10px"
+                    mt="5px"
                     marginBottom="10px"
                     width="180px"
-                    height="100%"
+                    height="30px"
                     background="#fff"
                     type="text"
                     placeholder="Ano + Ficha"
                   />
-                </Box>
-              </Box>
-              <Box direction="column" align="flex-end" width="30%" height="100%">
-                <Box direction="column" align="flex-end" width="30%" height="50%">
+                </Flex>
+              </Flex>
+              <Flex direction="column" align="flex-end" width="30%" height="50%">
+                <Flex>
                   <Button
                     m="10px"
                     mt="20px"
@@ -312,13 +398,11 @@ export default function TrocaFabrica() {
                     width="200px"
                     colorScheme="red"
                     color="white"
-                    type="submit"
-                    onClick={() => window.location.reload(false)}
+                    type="button"
+                    onClick={clearAllStates}
                   >
                     Limpar
                   </Button>
-                </Box>
-                <Box direction="column" align="flex-end" width="30%" height="50%">
                   <label htmlFor="fileInput" className="custom-file-input">
                     <Input
                       type="file"
@@ -329,9 +413,9 @@ export default function TrocaFabrica() {
                     />
                     <Button
                       m="10px"
+                      mt="20px"
                       marginBottom="10px"
                       width="200px"
-                      height="100%"
                       colorScheme="blue"
                       bg="#465687"
                       color="white"
@@ -341,11 +425,12 @@ export default function TrocaFabrica() {
                       Importar Arquivo
                     </Button>
                   </label>
-                </Box>
-              </Box>
-              <Box align="left" width="10%">
+                  {loading && <p>Carregando...</p>}
+                </Flex>
+              </Flex>
+              <Flex align="left" width="10%">
                 <Image
-                  boxSize="2rem"
+                  FlexSize="2rem"
                   borderRadius="full"
                   src="/logoCS.png"
                   alt="Logo CS"
@@ -353,9 +438,9 @@ export default function TrocaFabrica() {
                   width="130px"
                   height="100px"
                 />
-              </Box>
-            </Box>
-            <Box
+              </Flex>
+            </Flex>
+            <Flex
               m="5px"
               width="99.4%"
               height="68vh"
@@ -363,7 +448,7 @@ export default function TrocaFabrica() {
               borderRadius="10px"
               border="1px solid"
             >
-              <Box bg="#fff">
+              <Flex bg="#fff">
                 <Box
                   m="5px"
                   width="99.4%"
@@ -373,35 +458,64 @@ export default function TrocaFabrica() {
                   border="1px solid"
                 >
                   <Box width="100%" marginTop="20px" height="58vh" overflowY="scroll">
-                    <DataGrid
-                      rows={apiData}
-                      columns={[
-                        { field: 'EMPRESA', header: 'Empresa', width: 90 },
-                        { field: 'SECAO', header: 'Seção', type: 'number', width: 90 },
-                        { field: 'ANO', header: 'Ano', type: 'number', width: 90 },
-                        { field: 'FICHA', header: 'Ficha', type: 'number', width: 90 },
-                        { field: 'MODELO', header: 'Modelo', width: 150 },
-                        { field: 'FABRICA', header: 'Fábrica', type: 'number', width: 90 },
-                        { field: 'STATUS', header: 'Status', type: 'number', width: 150 },
-                        { field: 'ID', header: 'Id', type: 'number', width: 150 },
-                      ]}
-                      pageSize={9}
-                      checkboxSelection
-                      disableSelectionOnClick
-                      onSelectionModelChange={(selectionModel) => {
-                        console.log('Modelo de Seleção Alterado:', selectionModel);
-                        setSelectionModel(selectionModel);
-                        console.log('Estado de seleção atualizado:', selectionModel);
-                      }}
-                      getRowId={(row) => (row.ID ? row.ID.toString() : '')}
-                    />
+                    <Table variant="simple">
+                      <Thead>
+                        <Tr>
+                          <Th>
+                            <Flex direction="column" align="center" width="25px">
+                              <Flex align="center" ml="4">
+                                <Checkbox isChecked={selectAll} onChange={handleSelectAll} /><br />
+                              </Flex>
+                              <Flex direction="column" align="center">
+                                <Text ml="4">Selecionar</Text><Text ml="4"> Todos</Text>
+                              </Flex>
+                            </Flex>
+                          </Th>
+                          <Th>Empresa</Th>
+                          <Th>Seção</Th>
+                          <Th>Ano</Th>
+                          <Th>Ficha</Th>
+                          <Th>Modelo</Th>
+                          <Th>Fábrica</Th>
+                          <Th>Status</Th>
+                          {/* <Th>Id</Th> */}
+                        </Tr>
+                      </Thead>
+                      <Tbody>
+                        {apiData.map((row) => (
+                          <Tr key={row.ID}>
+                            <Td><Checkbox
+                              onChange={() => handleCheckboxChange(row.ID)}
+                              isChecked={selectionModel.includes(row.ID)}
+                            /></Td>
+                            <Td>{row.EMPRESA}</Td>
+                            <Td>{row.SECAO}</Td>
+                            <Td>{row.ANO}</Td>
+                            <Td>{row.FICHA}</Td>
+                            <Td>{row.MODELO}</Td>
+                            <Td>{row.FABRICA}</Td>
+                            <Td>{row.STATUS}</Td>
+                            {/* <Td>{row.ID}</Td> */}
+                          </Tr>
+                        ))}
+                      </Tbody>
+                    </Table>
                   </Box>
                 </Box>
-              </Box>
-              <Box justifyContent="center" alignItems="center" mt={4}>
-              </Box>
-            </Box>
-            <Box
+              </Flex>
+
+
+
+
+
+
+
+
+
+
+              <Flex justifyContent="center" alignItems="center" mt={4}></Flex>
+            </Flex>
+            <Flex
               direction="column"
               ml="2px"
               m="5px"
@@ -409,19 +523,22 @@ export default function TrocaFabrica() {
               justify="start"
               borderRadius="10px"
               width="99.4%"
-              height="10%"
+              height="11%"
               border="1px solid"
             >
-              <Box direction="row">
-                {/* <Text color="#fff" ml="3px">
+
+              <Flex direction="row">
+                <IoAddCircleOutline
+                  style={{ marginLeft: "5px", marginTop: "5px", color: "#fff" }}
+                />
+                <Text color="#fff" ml="3px">
                   Nova Fabrica
-                </Text> */}
-                <IoAddCircleOutline style={{ marginLeft: "5px", marginTop: "5px", color: "#fff" }} />
-              </Box>
-              <Box justify="space-between">
+                </Text>
+              </Flex>
+              <Flex justify="space-between">
                 <Input
                   ml="10px"
-                  mt="10px"
+                  mt="5px"
                   marginBottom="10px"
                   width="180px"
                   background="#fff"
@@ -442,11 +559,12 @@ export default function TrocaFabrica() {
                 >
                   Enviar Dados
                 </Button>
-              </Box>
-            </Box>
-          </Box>
-        )
-        }
+              </Flex>
+            </Flex>
+          </Flex>
+        )}
       </Box>
-  )
+    </Flex>
+
+  );
 }
