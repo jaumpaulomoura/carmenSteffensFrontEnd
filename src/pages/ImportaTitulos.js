@@ -1,6 +1,6 @@
 import { Box, Button, Input, Flex, Image, Text, Stack, Badge, Select, Checkbox, TableContainer, Table, Th, Tr, Td, Tbody, Thead, Center } from "@chakra-ui/react";
 import { TbReplace, TbReportAnalytics, TbSearch, TbCalculator } from 'react-icons/tb';
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
 
 export default function ImportaTitulos() {
@@ -18,6 +18,9 @@ export default function ImportaTitulos() {
   const [empCli, setEmpCli] = useState("")
   const [codCli, setCodCli] = useState("")
   const [FI15NOME, setFI15NOME] = useState("")
+  const [itensSelecionados, setItensSelecionados] = useState([]);
+  const [soma, setSoma] = useState(0);
+
   const handleCadastroClick = () => {
     setShowCadastro(true);
   };
@@ -105,7 +108,6 @@ export default function ImportaTitulos() {
       bordero: bordero,
       prefixos: prefixos,
       tipTit: tipTit,
-      // cliente: cliente,
     };
 
     try {
@@ -113,7 +115,12 @@ export default function ImportaTitulos() {
 
       if (response.status === 200) {
         console.log("Resultados:", response.data);
-        setResultado(response.data);
+
+        const dataWithIds = response.data.map((item, index) => {
+          return { ...item, id: index + 1 };
+        });
+
+        setResultado(dataWithIds);
       } else {
         console.error("Erro na solicitação:", response.statusText);
       }
@@ -188,8 +195,13 @@ export default function ImportaTitulos() {
             <Tbody height="100%">
 
               {resultado.map((item, index) => (
-                <Tr key={index} height="100%" >
-                  <Td><Checkbox defaultChecked></Checkbox></Td>
+                <Tr key={index} height="100%">
+                  <Td>
+                    <Checkbox
+                      isChecked={itensSelecionados.some((selectedItem) => selectedItem.id === item.id)}
+                      onChange={() => handleCheckboxChange(item)}
+                    />
+                  </Td>
                   <Td>{item.NUMERO_TITULO}</Td>
                   <Td>{item.DESDOBRO}</Td>
                   <Td>{item.NOME_LOJA}</Td>
@@ -289,8 +301,57 @@ export default function ImportaTitulos() {
     URL.revokeObjectURL(url);
   };
 
+  const handleCheckboxChange = (item) => {
+    const selectedIndex = itensSelecionados.findIndex((selectedItem) => selectedItem.id === item.id);
+    let newSelected = [];
+
+    if (selectedIndex === -1) {
+      newSelected = newSelected.concat(itensSelecionados, item);
+    } else if (selectedIndex === 0) {
+      newSelected = newSelected.concat(itensSelecionados.slice(1));
+    } else if (selectedIndex === itensSelecionados.length - 1) {
+      newSelected = newSelected.concat(itensSelecionados.slice(0, -1));
+    } else if (selectedIndex > 0) {
+      newSelected = newSelected.concat(
+        itensSelecionados.slice(0, selectedIndex),
+        itensSelecionados.slice(selectedIndex + 1)
+      );
+    }
+
+    console.log("itensSelecionados antes:", itensSelecionados);
+    console.log("Novos itensSelecionados:", newSelected);
+
+    setItensSelecionados(newSelected);
+  };
 
 
+  const handleMarcarTodos = () => {
+    // Filtra apenas os itens que ainda não estão selecionados
+    const novosSelecionados = resultado.filter((item) => !itensSelecionados.some((selectedItem) => selectedItem.id === item.id));
+    // Concatena os novos itens selecionados com os itens já selecionados
+    const novosItensSelecionados = [...itensSelecionados, ...novosSelecionados];
+    console.log("Novos itens selecionados (Marcar todos):", novosItensSelecionados);
+    setItensSelecionados(novosItensSelecionados);
+  };
+
+  const handleDesmarcarTodos = () => {
+    setItensSelecionados([]);
+    console.log("Itens selecionados antes (Desmarcar todos):", itensSelecionados);
+  };
+  useEffect(() => {
+    const novaSoma = itensSelecionados.reduce((acc, item) => {
+      
+      if (!isNaN(item.VALOR_TITULO)) {
+        return acc + parseFloat(item.VALOR_TITULO); 
+      }
+      return acc;
+    }, 0);
+    setSoma(novaSoma);
+  }, [itensSelecionados]); 
+
+  const formatarDinheiro = (valor) => {
+    return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  };
   return (
     <Box bg="#fff" >
 
@@ -508,17 +569,22 @@ export default function ImportaTitulos() {
 
         <Flex direction="column" align="center" width="20%">
           <Button m="7px" mt="20px" width="70%" colorScheme='blue' bg="#6DC53D" color="white" type="submit"
-          // onClick={handleExportExcel}
+            onClick={handleMarcarTodos}
           >Marcar</Button>
           <Button m="7px" width="70%" colorScheme='blue' bg="#FF4133" color="white" type="submit"
-          // onClick={handleExportExcel}
+            onClick={handleDesmarcarTodos}
           >Desmarcar</Button>
           <Text mt="100px" > Total Marcados </Text>
-          <Input height="28px" m="7px" value='' width="50%" background="#fff" borderColor="gray.700"
-            type="text" disabled=""
-          //   value={custo}
-          //   onChange={(e) => setCusto(e.target.value)}
-          />
+          <input
+      height="28px"
+      m="7px"
+      value={formatarDinheiro(soma)}
+      width="50%"
+      background="#fff"
+      borderColor="gray.700"
+      type="text"
+      disabled
+    />
           <Button m="7px" width="70%" colorScheme='blue' bg="#465687" color="white" type="submit"
           // onClick={handleExportExcel}
           ><TbCalculator />Calcular</Button>
@@ -722,3 +788,4 @@ export default function ImportaTitulos() {
 
   )
 }
+

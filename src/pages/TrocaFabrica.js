@@ -40,9 +40,9 @@ export default function TrocaFabrica() {
 
   const handleLogin = async () => {
     // dev
-    // const api_url = "http://127.0.0.1:5000/api/login";
+    const api_url = "http://127.0.0.1:5000/api/login";
     // prod
-    const api_url = "http://192.168.12.58:5000/api/login";
+    // const api_url = "http://192.168.12.58:5000/api/login";
 
     const credentials = {
       login: login,

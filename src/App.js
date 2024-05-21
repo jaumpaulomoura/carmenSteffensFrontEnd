@@ -15,7 +15,8 @@ import ConsultaBancas from './pages/consultBancas';
 import AtualizaNcm from './pages/AtualizaNcm';
 import PesModelEnt from './pages/PesModel'; 
 import GrupoPecista from './pages/GrupoPecista'; 
-import ImportVenc from './pages/ImportVenc'; 
+import RecalculoPecista from './pages/RecalculoPecista'; 
+import AtuBolsa from './pages/AtuBolsa'; 
 const theme = extendTheme({});
 function App() {
   return (
@@ -36,7 +37,9 @@ function App() {
           <Route path="/AtualizaNcm" element={<AtualizaNcm />} />
           <Route path="/pesModel" element={<PesModelEnt />} />
           <Route path="/grupoPecista" element={<GrupoPecista />} />
-          <Route path="/importVenc" element={<ImportVenc />} />
+          <Route path="/grupoPecista" element={<GrupoPecista />} />
+          <Route path="/recalculoPecista" element={<RecalculoPecista />} />
+          <Route path="/atuBolsa" element={<AtuBolsa />} />
         </Routes>
       </Router>
     </ChakraProvider>
